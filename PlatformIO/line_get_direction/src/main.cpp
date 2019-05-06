@@ -6,6 +6,8 @@ Pixy2 pixy;
 #include "AdvancePixyVector.h"
 #include "Atoms\numeric\vector.h"
 
+char buf[128];
+
 void setup()
 {
   Serial.begin(115200);
@@ -26,12 +28,26 @@ void setup()
 //     return outputAtomsVector;
 // }
 
+void setServo(int16_t position) {
+    // pixy.setServos(uint16_t s0, s1) - uint16_t s0/s1 => 0 - 1000
+    // Alamak servo = 350 - 650
+    const int16_t SERVO_INPUT_MAX_MIN = 100;
+    
+    const uint16_t ALAMAK_SERVO_CENTER_COEF = 50;
+    const uint16_t ALAMAK_SERVO_MIN = 350;
+    const uint16_t ALAMAK_SERVO_MAX = 650;
+  
+    int16_t mapServoValue = map(position, -1 * SERVO_INPUT_MAX_MIN, SERVO_INPUT_MAX_MIN, ALAMAK_SERVO_MIN, ALAMAK_SERVO_MAX) - ALAMAK_SERVO_CENTER_COEF;
+    int8_t servoError = pixy.setServos(mapServoValue, 500);
+
+    sprintf(buf, "Servo - position: %4d (%4d), status: %2d", position, mapServoValue, servoError);
+    Serial.println(buf);
+}
+
+int16_t servoPosition = 0;
 void loop()
 {
-  int8_t i;
-  char buf[128];
- 
-  pixy.line.getMainFeatures();
+   pixy.line.getMainFeatures();
 
   // pixy.line.vectors
   if (pixy.line.numVectors) {
@@ -39,6 +55,14 @@ void loop()
     //atoms::Vector2<int> vec = PixyVectorToAtomVector2(mainVector); 
     AdvancePixyVector vector{mainVector};
     vector.print();
+
+    // servoPosition += 10;
+    // if(servoPosition > 100) {
+    //   servoPosition = -100;
+    // }
+    int8_t OFFSET_COEF = -25;
+    servoPosition = ((90 - vector.angleDegree())) * -1 + OFFSET_COEF;
+    setServo(servoPosition);
   }
 
   if (pixy.line.numIntersections)
@@ -47,5 +71,5 @@ void loop()
   if (pixy.line.barcodes)
     pixy.line.barcodes->print();
 
-  delay(250);
+  delay(50);
 }
